@@ -1,2 +1,2 @@
 # Generalis-admin
-Beosztásgeneráló SBO adminisztrátoroknak
+Beosztásgeneráló SBO adminisztrátoroknak.
