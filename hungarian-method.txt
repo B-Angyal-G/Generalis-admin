@@ -1,0 +1,129 @@
+def graph_bipart_init (G):
+    s = 0
+    for i in range(len(G)):
+        for j in range(len(G[i])):
+            if G[i][j] == [1, 0] and sum(rows[j][1] for rows in G) == 0:
+                G[i][j][1] = 1
+                break
+
+
+def hun_repair_init (G, A, B):
+    ### 0-AS INDEXU CSUCSOK KIJELOLESE
+    for i in range(len(G)):
+        if sum(item[1] for item in G[i]) == 0:
+            A[i] = 0
+
+    ### 1-ES INDEXU CSUCSOK KIJELOLESE (MEG NEM LEHET JAVITO UT!)
+    for i in range(len(A)):
+        if A[i] == 0:
+            for j in range(len(G[0])):
+                if G[i][j] == [1, 0] and B[j] == -1:
+                    B[j] = 1
+
+
+def hun_repair (G):
+    A = list(-1 for i in range(len(G)))
+    B = list(-1 for i in range(len(G[0])))
+
+    hun_repair_init(G, A, B)
+    enum = 1
+    OK = 1
+    FIND = 0
+
+    # print("B", B)
+    # print("A", A)
+    # return 0
+
+    ### MINDEN 2. LEPES UTAN VIZSGALUNK
+    while True:
+        enum += 1
+        OK = 0
+        for j in range(len(B)):
+            if B[j] == enum - 1:
+                for i in range(len(G)):
+                    if G[i][j] == [1, 1] and A[i] == -1:
+                        A[i] = enum
+                        OK = 1
+
+        enum += 1
+        OK = 0
+        for i in range(len(A)):
+            if A[i] == enum - 1:
+                for j in range(len(G[0])):
+                    if G[i][j] == [1, 0] and B[j] == -1:
+                        B[j] = enum
+                        OK = 1
+
+                        ### VIZSGALAT, HOGY VEGE LESZ-E AZ ALGORITMUSNAK
+                        FIND = 1
+                        for k in range(len(G)):
+                            if G[k][j] == [1,1]:
+                                FIND = 0
+                                break
+                        if FIND == 1:
+                            last = j
+        
+        ### LEALLAS
+        if FIND == 1:
+            break
+
+
+    ### JAVITAS VEGREHAJTASA
+    ### ### MIVEL PARATLAN SOK ELET KELL ATIRNI,
+    ### ### EZERT AZ ELSOT KIVUL, MAJD WHILE CILUSBAN 2-ESEVEL
+    ### ### ATIRANDO EL MEGTALALASA A TOMB SEGITSEGEVEL TORTENIK
+    enum -= 1
+    for i in range(len(A)):
+        if G[i][last] == [1, 0] and A[i] == enum:
+            G[i][last][1] = 1
+            last = i
+            break
+
+    while enum > 0:
+        ### GRAF MATRIXABAN VIZSZINTESEN CSAK 1 EL LEHET KIVALASZTVA, AZT ATIRJUK
+        for j in range(len(G[last])):
+            if G[last][j] == [1, 1]:
+                G[last][j][1] = 0
+                last = j
+                break
+
+        ### AZ ELOBB MEGTALALT EL OSZLOPABAN MEGKERESSUK A JAVITOELT A TOMB SEGITSEGEVEL
+        enum -= 2
+        for i in range(len(A)):
+            if G[i][last] == [1, 0] and A[i] == enum:
+                G[i][last][1] = 1
+                last = i
+                break
+
+def graph_max_match (G):
+    graph_bipart_init(G)
+    hun_repair(G)
+
+def main():
+    # G = [[[0, 0], [1, 0], [0, 0], [0, 0], [0, 0], [1, 0]],
+    #      [[0, 0], [1, 0], [0, 0], [0, 0], [0, 0], [1, 0]],
+    #      [[0, 0], [0, 0], [1, 0], [0, 0], [1, 0], [0, 0]],
+    #      [[1, 0], [1, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+    #      [[0, 0], [0, 0], [0, 0], [1, 0], [1, 0], [0, 0]],
+    #      [[1, 0], [0, 0], [0, 0], [1, 0], [0, 0], [0, 0]]]
+
+    G = [[[0, 0], [1, 0], [0, 0], [0, 0], [0, 0]],
+         [[1, 0], [1, 0], [1, 0], [0, 0], [0, 0]],
+         [[0, 0], [0, 0], [1, 0], [1, 0], [0, 0]],
+         [[0, 0], [0, 0], [0, 0], [1, 0], [1, 0]],
+         [[0, 0], [1, 0], [0, 0], [0, 0], [0, 0]]]
+
+    for i in G:
+        print(i)
+    print('\n')
+    # # SOR OSSZEG
+    # s = sum(item[0] for item in G[0])
+    # # OSZLOP OSSZEG
+    # s = sum(row[3][0] for row in G)
+    # print(s)
+
+    graph_max_match(G)
+    for i in G:
+        print(i)
+
+main()
