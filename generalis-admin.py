@@ -239,11 +239,46 @@ def graph_max_match (G, RANDOM):
         pass
 
 def request_check (ORIG_TABLE):
+    DAYS = len(ORIG_TABLE[0]) - 3
     ERROR = 0
     print('ELLENORZESEK')
     for i in ORIG_TABLE:
         print(i)
     print()
+    ### ### ELLENORZES, HOGY PONTOSAN ANNYI KIOSZTANDO MUSZAK VAN-E AHANY NAP
+    day_shift = 0
+    night_shift = 0
+    OK_day = 0
+    OK_night = 0
+    ### ### HA SZEREPEL A TABLAZATBAN -1, AKKOR AZT A PROGRAM FOGJA KITOLTENI
+    ### ### UGYHOGY AKKOR AZ NEM LEHET BAJ, HOGY KEVESEBB MUSZAK VAN MEGADVA
+    for i in range(len(ORIG_TABLE)):
+        if ORIG_TABLE[i][1] != -1:
+            day_shift += ORIG_TABLE[i][1]
+        else:
+            OK_day = 1
+            
+        if ORIG_TABLE[i][2] != -1:
+            night_shift += ORIG_TABLE[i][2]
+        else:
+            OK_night = 1
+
+    ### ### FELTETELEK NAPPALRA ES EJSZAKARA KULON
+    if OK_day and day_shift <= 2*DAYS:
+        pass
+    elif !OK_day and day_shift == 2*DAYS:
+        OK_day = 1
+    elif !OK_day and day_shift != 2*DAYS:
+        pass
+
+    if OK_night and night_shift <= DAYS:
+        pass
+    elif !OK_night and night_shift == DAYS:
+        OK_night = 1
+    elif !OK_night and night_shift != DAYS:
+        pass
+
+
     ### ### ELLENORZES, HOGY NEM ADTAK-E EGY EMBERNEK TOBB FIX NAPOT
     ### ### NAPPALRA VAGY EJSZAKARA, MINT AMENNYIT LEHETNE
     ### ### ES 
@@ -292,65 +327,6 @@ def request_check (ORIG_TABLE):
 
 
 def main():
-    # # SOR OSSZEG
-    # s = sum(item[0] for item in G[0])
-    # # OSZLOP OSSZEG
-    # s = sum(row[3][0] for row in G)
-    # print(s)
-    
-    # G = [[[0, 0], [1, 0], [0, 0], [0, 0], [0, 0], [1, 0]],
-    #      [[0, 0], [1, 0], [0, 0], [0, 0], [0, 0], [1, 0]],
-    #      [[0, 0], [0, 0], [1, 0], [0, 0], [1, 0], [0, 0]],
-    #      [[1, 0], [1, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
-    #      [[0, 0], [0, 0], [0, 0], [1, 0], [1, 0], [0, 0]],
-    #      [[1, 0], [0, 0], [0, 0], [1, 0], [0, 0], [0, 0]]]
-
-    # WALDHAUSER 1
-    # G = [[[0, 0], [1, 0], [0, 0], [0, 0], [0, 0]],
-    #      [[1, 0], [1, 0], [1, 0], [0, 0], [0, 0]],
-    #      [[0, 0], [0, 0], [1, 0], [1, 0], [0, 0]],
-    #      [[0, 0], [0, 0], [0, 0], [1, 0], [1, 0]],
-    #      [[0, 0], [1, 0], [0, 0], [0, 0], [0, 0]]]
-
-    # WALDHAUSER 2
-    # G = [[[1, 0], [0, 0], [0, 0], [0, 0]],
-    #      [[1, 0], [1, 0], [0, 0], [0, 0]],
-    #      [[0, 0], [1, 0], [0, 0], [0, 0]],
-    #      [[0, 0], [1, 0], [1, 0], [1, 0]]]
-
-    # WALDHAUSER 3
-    # G = [[[0, 0], [1, 1], [0, 0], [0, 0], [0, 0], [1, 0]], 
-    #      [[0, 0], [1, 0], [0, 0], [0, 0], [0, 0], [1, 0]], 
-    #      [[0, 0], [0, 0], [1, 0], [0, 0], [1, 0], [0, 0]], 
-    #      [[1, 0], [1, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
-    #      [[0, 0], [0, 0], [0, 0], [1, 0], [1, 0], [0, 0]], 
-    #      [[1, 0], [0, 0], [0, 0], [1, 0], [0, 0], [0, 0]]] 
-
-
-    # G_work = c.deepcopy(G)
-    # summ_set = set()
-    # for i in range(10):
-    #     print(i, "Kezdes")
-    #     tmp = list()
-    #     graph_max_match(G_work, 1)
-    #     for i in range(len(G_work)):
-    #         for j in range(len(G_work[i])):
-    #             if G_work[i][j] == [1, 1]:
-    #                 tmp.append(j)
-    #                 G_work[i][j][1] = 0
-    #                 break
-    #     tmp = tuple(tmp)
-    #     summ_set.add(tmp)
-    #     for i in G_work:
-    #         print(i)
-    #     print(tmp)
-    #     print()
-    #     G_work = c.deepcopy(G)
-    # print(summ_set)
-    # print(len(summ_set))
-
-    
-
     ### XLSX IMPORTALASA
     workbook = load_workbook(filename="./requests_admin.xlsx")
     
@@ -392,90 +368,9 @@ def main():
 
 
     ### ELLENORZESEK
-    print('ELLENORZESEK')
-    for i in ORIG_TABLE:
-        print(i)
-    print()
-    ### ### ELLENORZES, HOGY NEM ADTAK-E EGY EMBERNEK TOBB FIX NAPOT
-    ### ### NAPPALRA VAGY EJSZAKARA, MINT AMENNYIT LEHETNE
-    ### ### ES 
-    ### ### ELLENORZES, HOGY NEM ADTAK-E VALAKINEK
-    ### ### EJSZAKA UTAN NAPPALT 
-    for row in range(len(ORIG_TABLE)):
-        s = 0
-        for day in range(DAYS):
-            if ORIG_TABLE[row][day + 3] in {'n', 'N'}:
-                s += 1
-                if ORIG_TABLE[row][day + 2] in {'é', 'É'}:
-                    print(ORIG_TABLE[row][0], day + 1, 'DATE: ALERT DAY AFTER NIGHT!!!')
-        if s > ORIG_TABLE[row][1]:
-            print(ORIG_TABLE[row][0], ': ALERT DAY!!!')
+    if request_check(ORIG_TABLE) == 0:
+        return 0
 
-        s = 0
-        for night in range(DAYS):
-            if ORIG_TABLE[row][night + 3] in {'é', 'É'}:
-                s += 1
-        if s > ORIG_TABLE[row][2]:
-            print(ORIG_TABLE[row][0], ': ALERT NIGHT!!!')
-
-    ### ### ELLENORZES, HOGY NEM OSZTOTTAK-E BE TOBB EMBERT EGY NAPON
-    ### ### NAPPALRA VAGY EJSZAKARA, MINT AMENNYIT LEHETNE
-    for day in range(3,len(ORIG_TABLE[0])):
-        s_day = 0
-        s_night = 0
-        for people in range(len(ORIG_TABLE)):
-            if ORIG_TABLE[people][day] in {'n', 'N'}:
-                s_day += 1
-            if ORIG_TABLE[people][day] in {'é', 'É'}:
-                s_night += 1
-        if s_day > 2:
-            print(day - 2, 'ALERT DAY SHIFT!!!')
-        if s_night > 1:
-            print(day - 2, 'ALERT NIGHT SHIFT!!!')
-
-
-    return 0
-    print(sat)
-    print(sun)
-    return 0
-    for j in range(0,len(nevek),2):
-        nevek[j+1][0] = nevek[j][0]
-    for j in range(len(nevek)):
-        for i in time:
-            if nevek[j][i] == None:
-                nevek[j][i] = 1
-    # KERESEK ROGZITESE
-    for j in range(len(nevek)):
-        for i in time:
-            fix_wish(nevek, j, i, d, WEIGHT1, WEIGHT2)
-
-    # SZÉTSZEDÉS NAPPALI ÉS ÉJSZAKAS TABLAZATOKRA A MŰSZAK SZAMOK KIOSZTASA MIATT
-    # NAPPALOS ÉS ÉJSZAKAS TABLAZATOKKAL KÜLÖN DOLGOZUNK
-    nevek_nappal = list(range(int(len(nevek)/2)))
-    for j in range(len(nevek_nappal)):
-        nevek_nappal[j] = list(range(len(nevek[0])))
-    for j in range(len(nevek_nappal)):
-        for i in range(len(nevek_nappal[j])):
-            nevek_nappal[j][i] = nevek[j*2][i]
-
-    nevek_este = list(range(int(len(nevek)/2)))
-    for j in range(len(nevek_nappal)):
-        nevek_este[j] = list(range(len(nevek[0])))
-    for j in range(len(nevek_este)):
-        for i in range(len(nevek_este[j])):
-            nevek_este[j][i] = nevek[j*2+1][i]
-    service_tm(nevek_nappal,d)
-    service_tm(nevek_este, d)
-    # VISSZAÍRAS A KIÍRASHOZ
-    for j in range(len(nevek_nappal)):
-        for i in range(len(nevek_nappal[j])):
-            nevek[j * 2][i] = nevek_nappal[j][i]
-    for j in range(len(nevek_este)):
-        for i in range(len(nevek_este[j])):
-            nevek[j * 2 + 1][i] = nevek_este[j][i]
-
-    print('\nEzek a kérések:')
-    niceprint(nevek, d, 2)
-
-
+    ### GRAF LETREHOZASA
+    G_ORIG = 0
 main()
