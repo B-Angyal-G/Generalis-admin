@@ -124,8 +124,8 @@ def graph_bipart_init (G, RANDOM):
                         G[i][j][1] = 1
                         break
 
-
 def hun_repair_init (G, A, B):
+    ### UA SIMPLE ES DOUBLE ESETEKBEN
     OK = 0
     ### 0-AS INDEXU CSUCSOK KIJELOLESE
     for i in range(len(G)):
@@ -144,9 +144,8 @@ def hun_repair_init (G, A, B):
                         OK = 1
     if OK:
         return 1
-    else: 
+    else:
         return 0
-
 
 def hun_repair (G):
     A = list(-1 for i in range(len(G)))
@@ -163,6 +162,7 @@ def hun_repair (G):
         for j in range(len(B)):
             if B[j] == enum - 1:
                 for i in range(len(G)):
+                    ### VAN EL ES MEG NEM JELOLTUK MEG A HOZZA TARTOZO CSUCSOT
                     if G[i][j] == [1, 1] and A[i] == -1:
                         A[i] = enum
                         OK = 1
@@ -173,6 +173,7 @@ def hun_repair (G):
             for i in range(len(A)):
                 if A[i] == enum - 1:
                     for j in range(len(G[0])):
+                        ### VAN EL ES MEG NEM JELOLTUK MEG A HOZZA TARTOZO CSUCSOT
                         if G[i][j] == [1, 0] and B[j] == -1:
                             B[j] = enum
                             OK = 1
@@ -180,12 +181,12 @@ def hun_repair (G):
                             ### VIZSGALAT, HOGY VEGE LESZ-E AZ ALGORITMUSNAK
                             FIND = 1
                             for k in range(len(G)):
-                                if G[k][j] == [1,1]:
+                                if G[k][j] in {[1, 1], [1, 4]}:
                                     FIND = 0
                                     break
                             if FIND == 1:
                                 last = j
-        
+
         ### LEALLAS
         if FIND == 1:
             break
@@ -212,7 +213,7 @@ def hun_repair (G):
                 elif G[last][j] == [1, 2]:
                     G[last][j][1] = 1
             last = last_new
-            
+
             ### AZ ELOBB MEGTALALT EL OSZLOPABAN MEGKERESSUK A JAVITOELT A TOMB SEGITSEGEVEL
             enum -= 2
             for i in range(len(A)):
@@ -228,15 +229,125 @@ def hun_repair (G):
 
     return 0
 
-
 def graph_max_match (G, RANDOM):
     graph_bipart_init(G, RANDOM)
-    print("INIT")
-    for i in G:
-        print(i)
-    print()
     while hun_repair(G):
         pass
+
+
+
+def graph_bipart_double_init (G, RANDOM):
+    if RANDOM:
+        for i in range(len(G)):
+            if sum(item[1] for item in G[i]) == 0:
+                tmp = list()
+                for j in range(len(G[i])):
+                    if G[i][j] == [1, 0] and sum(rows[j][1] for rows in G) in {0, 1, 4}:
+                        tmp.append(j)
+                if len(tmp) > 0:
+                    rand_item = random.choice(tmp)
+                    G[i][rand_item][1] = 1
+    else:
+        for i in range(len(G)):
+            if sum(item[1] for item in G[i]) == 0:
+                for j in range(len(G[i])):
+                    s = 0
+                    if G[i][j] == [1, 0] and sum(rows[j][1] for rows in G) in {0, 1, 4}:
+                        G[i][j][1] = 1
+                        break
+
+def hun_repair_double(G):
+    A = list(-1 for i in range(len(G)))
+    B = list(-1 for i in range(len(G[0])))
+
+    ### UA MINT SIMPLE ESETBEN
+    OK = hun_repair_init(G, A, B)
+    enum = 1
+    FIND = 0
+
+    ### MINDEN 2. LEPES UTAN VIZSGALUNK
+    while OK:
+        enum += 1
+        OK = 0
+        for j in range(len(B)):
+            if B[j] == enum - 1:
+                for i in range(len(G)):
+                    ### VAN EL ES MEG NEM JELOLTUK MEG A HOZZA TARTOZO CSUCSOT
+                    if G[i][j] == [1, 1] and A[i] == -1:
+                        A[i] = enum
+                        OK = 1
+
+        if OK:
+            enum += 1
+            OK = 0
+            for i in range(len(A)):
+                if A[i] == enum - 1:
+                    for j in range(len(G[0])):
+                        ### VAN EL ES MEG NEM JELOLTUK MEG A HOZZA TARTOZO CSUCSOT
+                        if G[i][j] == [1, 0] and B[j] == -1:
+                            B[j] = enum
+                            OK = 1
+
+                            ### VIZSGALAT, HOGY VEGE LESZ-E AZ ALGORITMUSNAK
+                            FIND = 1
+                            s_edge = 0
+                            for k in range(len(G)):
+                                if G[k][j] == [1, 1] or G[k][j] == [1, 4]:
+                                    s_edge += 1
+                            if s_edge < 2:
+                                FIND = 1
+                                last = j
+
+        ### LEALLAS
+        if FIND == 1:
+            print(B)
+            print(A)
+            print(enum)
+            print(j)
+            break
+
+    ### JAVITAS VEGREHAJTASA
+    ### ### MIVEL PARATLAN SOK ELET KELL ATIRNI,
+    ### ### EZERT AZ ELSOT KIVUL, MAJD WHILE CILUSBAN 2-ESEVEL
+    ### ### ATIRANDO EL MEGTALALASA A TOMB SEGITSEGEVEL TORTENIK
+    if FIND:
+        enum -= 1
+        for i in range(len(A)):
+            if G[i][last] == [1, 0] and A[i] == enum:
+                G[i][last][1] = 2
+                last = i
+                break
+
+        while enum > 0:
+            ### GRAF MATRIXABAN VIZSZINTESEN CSAK 1 EL LEHET KIVALASZTVA, AZT ATIRJUK
+            for j in range(len(G[last])):
+                if G[last][j] == [1, 1]:
+                    G[last][j][1] = 0
+                    last_new = j
+                elif G[last][j] == [1, 2]:
+                    G[last][j][1] = 1
+            last = last_new
+
+            ### AZ ELOBB MEGTALALT EL OSZLOPABAN MEGKERESSUK A JAVITOELT A TOMB SEGITSEGEVEL
+            enum -= 2
+            for i in range(len(A)):
+                if G[i][last] == [1, 0] and A[i] == enum:
+                    G[i][last][1] = 2
+                    last = i
+                    break
+
+        for i in range(len(G[last])):
+            if G[last][i] == [1, 2]:
+                G[last][i][1] = 1
+        return 1
+
+    return 0
+
+def graph_double_max_match (G, RANDOM):
+    graph_bipart_double_init(G, RANDOM)
+    while hun_repair_double(G):
+        pass
+
 
 def request_check (ORIG_TABLE):
     DAYS = len(ORIG_TABLE[0]) - 3
@@ -248,42 +359,31 @@ def request_check (ORIG_TABLE):
     ### ### ELLENORZES, HOGY PONTOSAN ANNYI KIOSZTANDO MUSZAK VAN-E AHANY NAP
     day_shift = 0
     night_shift = 0
-    OK_day = 0
-    OK_night = 0
-    ### ### HA SZEREPEL A TABLAZATBAN -1, AKKOR AZT A PROGRAM FOGJA KITOLTENI
-    ### ### UGYHOGY AKKOR AZ NEM LEHET BAJ, HOGY KEVESEBB MUSZAK VAN MEGADVA
     for i in range(len(ORIG_TABLE)):
-        if ORIG_TABLE[i][1] != -1:
-            day_shift += ORIG_TABLE[i][1]
-        else:
-            OK_day = 1
-            
-        if ORIG_TABLE[i][2] != -1:
-            night_shift += ORIG_TABLE[i][2]
-        else:
-            OK_night = 1
+        day_shift += ORIG_TABLE[i][1]
+        night_shift += ORIG_TABLE[i][2]
 
     ### ### FELTETELEK NAPPALRA ES EJSZAKARA KULON
-    if OK_day and day_shift <= 2*DAYS:
-        pass
-    elif !OK_day and day_shift == 2*DAYS:
-        OK_day = 1
-    elif !OK_day and day_shift != 2*DAYS:
-        pass
+    if day_shift < 2*DAYS:
+        print('ALERT!!! Nappalra kevesebb műszak van beírva, mint szükséges!')
+        ERROR = 1
+    elif day_shift > 2*DAYS:
+        print('ALERT!!! Nappalra több műszak van beírva, mint szükséges!')
+        ERROR = 1
 
-    if OK_night and night_shift <= DAYS:
-        pass
-    elif !OK_night and night_shift == DAYS:
-        OK_night = 1
-    elif !OK_night and night_shift != DAYS:
-        pass
+    if night_shift < DAYS:
+        print('ALERT!!! Éjszakára kevesebb műszak van beírva, mint szükséges!')
+        ERROR = 1
+    elif night_shift > DAYS:
+        print('ALERT!!! Éjszakára több műszak van beírva, mint szükséges!')
+        ERROR = 1
 
 
     ### ### ELLENORZES, HOGY NEM ADTAK-E EGY EMBERNEK TOBB FIX NAPOT
     ### ### NAPPALRA VAGY EJSZAKARA, MINT AMENNYIT LEHETNE
-    ### ### ES 
+    ### ### ES
     ### ### ELLENORZES, HOGY NEM ADTAK-E VALAKINEK
-    ### ### EJSZAKA UTAN NAPPALT 
+    ### ### EJSZAKA UTAN NAPPALT
     for row in range(len(ORIG_TABLE)):
         s = 0
         for day in range(DAYS):
@@ -329,7 +429,7 @@ def request_check (ORIG_TABLE):
 def main():
     ### XLSX IMPORTALASA
     workbook = load_workbook(filename="./requests_admin.xlsx")
-    
+
     # ELSO SHEET
     worksheet = workbook.worksheets[0]
 
@@ -368,9 +468,85 @@ def main():
 
 
     ### ELLENORZESEK
-    if request_check(ORIG_TABLE) == 0:
-        return 0
+    # if request_check(ORIG_TABLE) == 0:
+    #     return 0
 
-    ### GRAF LETREHOZASA
-    G_ORIG = 0
+    ### GRAFOK LETREHOZASA
+    day_exception = {'x', 'X', 'y', 'Y', 'xn', 'xN', 'XN', 'Xn'}
+    ### TODO EJSZAKAI MUSZAKOT HASONLO MODON MEGCSINALNI
+    night_exception_strict = {'x', 'X', 'y', 'Y', 'xn', 'xN', 'XN', 'Xn'}
+    night_exception_soft = {'y', 'Y', 'xe', 'xN', 'XN', 'Xn'}
+    ORIG_TABLE_REQ = list(range(len(ORIG_TABLE)))
+    for i in range(len(ORIG_TABLE_REQ)):
+        ORIG_TABLE_REQ[i] = [[1,0] for j in range(DAYS)]
+        for j in range(DAYS):
+            if ORIG_TABLE[i][j + 3] in day_exception:
+                ORIG_TABLE_REQ[i][j][0] = 0
+            if ORIG_TABLE[i][j + 3] in {'n', 'N'}:
+                ORIG_TABLE_REQ[i][j][1] = 4
+
+    print('ORIG_TABLE:')
+    for i in ORIG_TABLE:
+        print(i)
+    print()
+
+    print('ORIG_TABLE_REQ:')
+    for i in ORIG_TABLE_REQ:
+        print(i)
+    print()
+
+    day_shifts = [ORIG_TABLE[i][1] for i in range(len(ORIG_TABLE))]
+    index = 0
+    ORIG_GRAPH_DAY = list(range(2*DAYS))
+    for i in range(len(ORIG_TABLE_REQ)):
+        for j in range(day_shifts[i]):
+            ORIG_GRAPH_DAY[index] = c.deepcopy(ORIG_TABLE_REQ[i])
+            index += 1
+
+    print('ORIG_GRAPH_DAY:')
+    for i in ORIG_GRAPH_DAY:
+        print(i)
+    print()
+
+    ### ### FIX NAPOK BEIRASA/JAVITASA
+    admin_index = 0
+    for admin in day_shifts:
+        serial_num = 0
+        for col in range(len(ORIG_GRAPH_DAY[0])):
+            if ORIG_GRAPH_DAY[admin_index][col][1] == 4:
+                for row in range(admin_index, admin_index + admin):
+                   if row != serial_num + admin_index:
+                       ORIG_GRAPH_DAY[row][col][1] = 0
+                serial_num += 1
+        admin_index += admin
+
+    print('ORIG_GRAPH_DAY MOD:')
+    for i in ORIG_GRAPH_DAY:
+        print(i)
+    print()
+    graph_double_max_match(ORIG_GRAPH_DAY, 1)
+    print('ORIG_GRAPH_DAY FILL:')
+    for i in ORIG_GRAPH_DAY:
+        print(i)
+    print()
+
+    for i in range(len(ORIG_GRAPH_DAY[0])):
+        s = 0
+        for j in range(len(ORIG_GRAPH_DAY)):
+            if ORIG_GRAPH_DAY[j][i][1] > 0:
+                s += 1
+        print(i, s)
+
+
+    for i in range(len(ORIG_GRAPH_DAY)):
+        s = 0
+        for j in range(len(ORIG_GRAPH_DAY[i])):
+            if ORIG_GRAPH_DAY[i][j][1] > 0:
+                s += 1
+        print(i, s)
+
+    for i in range(len(ORIG_GRAPH_DAY)):
+        for j in range(len(ORIG_GRAPH_DAY[i])):
+            if ORIG_GRAPH_DAY[i][j] == [0, 1]:
+                print('ALERT!!!')
 main()
