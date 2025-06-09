@@ -300,10 +300,6 @@ def hun_repair_double(G):
 
         ### LEALLAS
         if FIND == 1:
-            print(B)
-            print(A)
-            print(enum)
-            print(j)
             break
 
     ### JAVITAS VEGREHAJTASA
@@ -347,6 +343,75 @@ def graph_double_max_match (G, RANDOM):
     graph_bipart_double_init(G, RANDOM)
     while hun_repair_double(G):
         pass
+
+def make_graph (ORIG_TABLE, SHIFT, DAYS):
+    ### GRAFOK LETREHOZASA
+    ### ### TABLAZATBA IRHATO JELEK CSOPORTOSITASA
+    day_exception_current = {'x', 'X', 'y', 'Y', 'xn', 'xN', 'XN', 'Xn', 'nx', 'nX', 'Nx', 'NX', 'e', 'E'}
+    day_exception_prev = {'e', 'E'}
+    night_exception_current = {'x', 'X', 'y', 'Y', 'xe', 'xE', 'XE', 'Xe', 'ex', 'eX', 'Ex', 'EX', 'n', 'N'}
+    night_exception_next = {'x', 'X', 'xn', 'xN', 'XN', 'Xn', 'nx', 'nX', 'Nx', 'NX', 'n', 'N'}
+
+    ### ORIG_TABLE_REQ AZ ADOTT MUSZAKRA VONATKOZO KERESEKET TARTALMAZZA
+    ### ### NEM LEHET NAPPALOS, HA AZNAP VAGY ELOTTE NAP EJSZAKAS
+    ### ### NEM LEHET EJSZAKAS, HA AZNAP VAGY UTANA NAP NAPPALOS
+    ORIG_TABLE_REQ = list(range(len(ORIG_TABLE)))
+    if SHIFT == 'DAY':
+        for i in range(len(ORIG_TABLE_REQ)):
+            ORIG_TABLE_REQ[i] = [[1,0] for j in range(DAYS)]
+            for j in range(DAYS):
+                if ORIG_TABLE[i][j + 3] in day_exception_current:
+                    ORIG_TABLE_REQ[i][j][0] = 0
+                if ORIG_TABLE[i][j + 3] in {'n', 'N'}:
+                    ORIG_TABLE_REQ[i][j][1] = 4
+                if ORIG_TABLE[i][j + 2] in day_exception_prev:
+                    ORIG_TABLE_REQ[i][j][0] = 0
+    if SHIFT == 'NIGHT':
+        for i in range(len(ORIG_TABLE_REQ)):
+            ORIG_TABLE_REQ[i] = [[1,0] for j in range(DAYS)]
+            for j in range(DAYS):
+                if ORIG_TABLE[i][j + 3] in night_exception_current:
+                    ORIG_TABLE_REQ[i][j][0] = 0
+                if ORIG_TABLE[i][j + 3] in {'e', 'E'}:
+                    ORIG_TABLE_REQ[i][j][1] = 4
+                if j + 4 < len(ORIG_TABLE[0]):
+                    if ORIG_TABLE[i][j + 4] in night_exception_next:
+                        ORIG_TABLE_REQ[i][j][0] = 0
+
+    ### ORIG_GRAPH AZ ADOTT MUSZAKNAK MEGFELELO GRAF
+    ### AMIBEN MINDEN EMBER ANNYISZOR SZEREPEL MAR, AHANY MUSZAKJA VAN
+    ### ### SHIFTS A MUSZAKNAK MEGFELELO BEOSZTASSZAMOKAT TARTALMAZZA
+    if SHIFT == 'DAY':
+        shifts = [ORIG_TABLE[i][1] for i in range(len(ORIG_TABLE))]
+    if SHIFT == 'NIGHT':
+        shifts = [ORIG_TABLE[i][2] for i in range(len(ORIG_TABLE))]
+    index = 0
+    ORIG_GRAPH = list(range(sum(shifts)))
+    for i in range(len(ORIG_TABLE_REQ)):
+        for j in range(shifts[i]):
+            ORIG_GRAPH[index] = c.deepcopy(ORIG_TABLE_REQ[i])
+            index += 1
+
+    ### ### FIX NAPOK BEIRASA/JAVITASA
+    admin_index = 0
+    for s in range(len(shifts)):
+        serial_num = 0
+        for col in range(len(ORIG_GRAPH[0])):
+            if ORIG_GRAPH[admin_index][col][1] == 4:
+                for row in range(admin_index, admin_index + shifts[s]):
+                   if row != serial_num + admin_index:
+                       ORIG_GRAPH[row][col][1] = 0
+                       # print('ATIRVA!', s + 1, 'ADMIN', col + 1, 'nap', 'AMDIN INDEX', admin_index)
+                serial_num += 1
+        ### ### HA A LEGUTOLSO ADMINNAL 0 SZEREPEL MUSZAKSZAMNAK,
+        ### ### AKKOR MAR NEM KELL NOVELNI, KULONBEN KIINDEXEL A GRAFBOL
+        if s + 1 == len(shifts) - 1 and shifts[s + 1] == 0:
+            pass
+        else:
+            admin_index += shifts[s]
+
+    return ORIG_GRAPH
+
 
 
 def request_check (ORIG_TABLE):
@@ -426,6 +491,34 @@ def request_check (ORIG_TABLE):
     return 1
 
 
+def whois(row, shifts):
+    s = 0
+    for i in range(len(shifts)):
+        s += shifts[i]
+        if s > row:
+            return i
+
+def graph_merge(graph_day, graph_night, day_shifts, night_shifts, admins, DAYS):
+    ### VEGSO TABLAZAT, ELSO OSZLOPA AZ ADMINOK NEVEI
+    final_table = [[admin] for admin in admins]
+    for i in range(len(final_table)):
+        final_table[i] += (list('' for j in range(DAYS)))
+
+    ### NAPPALOS MUSZAKOK EGYBE IRASA
+    for row in range(len(graph_day)):
+        for col in range(len(graph_day[row])):
+            if graph_day[row][col][1] in {1, 4}:
+                final_table[whois(row, day_shifts)][col + 1] = 'N'
+    
+    ### EJSZAKAS MUSZAKOK EGYBE IRASA
+    for row in range(len(graph_night)):
+        for col in range(len(graph_night[row])):
+            if graph_night[row][col][1] in {1, 4}:
+                final_table[whois(row, night_shifts)][col + 1] = 'E'
+
+    return final_table
+
+
 def main():
     ### XLSX IMPORTALASA
     workbook = load_workbook(filename="./requests_admin.xlsx")
@@ -441,7 +534,9 @@ def main():
 
     # NAPOK SZAMA
     DAYS = row_list[0][1]
+    # BEOLVASOTT TABLAZAT
     ORIG_TABLE = [row[0:DAYS + 3] for row in row_list[3:len(row_list)]]
+    admins = [row[0] for row in ORIG_TABLE]
 
     # HETVEGEK DATUMAINAK GENERALESA KEZD.
     SATURDAY = row_list[1][1]
@@ -468,85 +563,60 @@ def main():
 
 
     ### ELLENORZESEK
-    # if request_check(ORIG_TABLE) == 0:
-    #     return 0
-
+    if request_check(ORIG_TABLE) == 0:
+        return 0
+    
     ### GRAFOK LETREHOZASA
-    day_exception = {'x', 'X', 'y', 'Y', 'xn', 'xN', 'XN', 'Xn'}
-    ### TODO EJSZAKAI MUSZAKOT HASONLO MODON MEGCSINALNI
-    night_exception_strict = {'x', 'X', 'y', 'Y', 'xn', 'xN', 'XN', 'Xn'}
-    night_exception_soft = {'y', 'Y', 'xe', 'xN', 'XN', 'Xn'}
-    ORIG_TABLE_REQ = list(range(len(ORIG_TABLE)))
-    for i in range(len(ORIG_TABLE_REQ)):
-        ORIG_TABLE_REQ[i] = [[1,0] for j in range(DAYS)]
-        for j in range(DAYS):
-            if ORIG_TABLE[i][j + 3] in day_exception:
-                ORIG_TABLE_REQ[i][j][0] = 0
-            if ORIG_TABLE[i][j + 3] in {'n', 'N'}:
-                ORIG_TABLE_REQ[i][j][1] = 4
-
-    print('ORIG_TABLE:')
-    for i in ORIG_TABLE:
-        print(i)
-    print()
-
-    print('ORIG_TABLE_REQ:')
-    for i in ORIG_TABLE_REQ:
-        print(i)
-    print()
-
     day_shifts = [ORIG_TABLE[i][1] for i in range(len(ORIG_TABLE))]
-    index = 0
-    ORIG_GRAPH_DAY = list(range(2*DAYS))
-    for i in range(len(ORIG_TABLE_REQ)):
-        for j in range(day_shifts[i]):
-            ORIG_GRAPH_DAY[index] = c.deepcopy(ORIG_TABLE_REQ[i])
-            index += 1
+    night_shifts = [ORIG_TABLE[i][2] for i in range(len(ORIG_TABLE))]
+    ORIG_GRAPH_DAY = make_graph(ORIG_TABLE, 'DAY', DAYS)
+    ORIG_GRAPH_NIGHT = make_graph(ORIG_TABLE, 'NIGHT', DAYS)
 
-    print('ORIG_GRAPH_DAY:')
-    for i in ORIG_GRAPH_DAY:
-        print(i)
-    print()
+    while True:
+        ### EREDETI GRAFOKAT NEM MODOSITJUK,
+        ### AZ ALABBI GRAFOKKAL FOGUNK TOVABB DOLGOZNI
+        graph_day = c.deepcopy(ORIG_GRAPH_DAY)
+        graph_night = c.deepcopy(ORIG_GRAPH_NIGHT)
 
-    ### ### FIX NAPOK BEIRASA/JAVITASA
-    admin_index = 0
-    for admin in day_shifts:
-        serial_num = 0
-        for col in range(len(ORIG_GRAPH_DAY[0])):
-            if ORIG_GRAPH_DAY[admin_index][col][1] == 4:
-                for row in range(admin_index, admin_index + admin):
-                   if row != serial_num + admin_index:
-                       ORIG_GRAPH_DAY[row][col][1] = 0
-                serial_num += 1
-        admin_index += admin
+        ### NAPPALI BEOSZTAS GENERALASA
+        graph_double_max_match(graph_day, 1)
 
-    print('ORIG_GRAPH_DAY MOD:')
-    for i in ORIG_GRAPH_DAY:
-        print(i)
-    print()
-    graph_double_max_match(ORIG_GRAPH_DAY, 1)
-    print('ORIG_GRAPH_DAY FILL:')
-    for i in ORIG_GRAPH_DAY:
-        print(i)
-    print()
+        ### EJSZAKAI MUSZAKOKHOZ TARTOZO GRAF MODOSITASA
+        ### A GENERALASNAK MEGFELELOEN
+        for row in range(len(graph_day)):
+            for col in range(len(graph_day[row])):
+                if graph_day[row][col][1] == 1:
+                    admin = whois(row, day_shifts)
+                    admin_index = sum(night_shifts[:admin])
+                    for row_mod in range(admin_index, admin_index + night_shifts[admin]):
+                        graph_night[row_mod][col][0] = 0
+                        if col - 1 >= 0:
+                            graph_night[row_mod][col - 1][0] = 0
+                    break
 
-    for i in range(len(ORIG_GRAPH_DAY[0])):
-        s = 0
-        for j in range(len(ORIG_GRAPH_DAY)):
-            if ORIG_GRAPH_DAY[j][i][1] > 0:
-                s += 1
-        print(i, s)
+        ### EJSZAKAI MUSZAKOK GENERALASA
+        graph_double_max_match(graph_night, 1)
+        break
+
+    final_table = graph_merge(graph_day, graph_night, day_shifts, night_shifts, admins, DAYS)
+    e = 0
+    n = 0
+    for i in final_table:
+        for j in range(len(i)):
+            if j == 0:
+                print(i[j], end='\t')
+            else:
+                if i[j] != '':
+                    print(i[j], end=' ')
+                    if i[j] == 'E':
+                        e += 1
+                    if i[j] == 'N':
+                        n += 1
+                else:
+                    print(' ', end=' ')
+        print()
+    print(n)
+    print(e)
 
 
-    for i in range(len(ORIG_GRAPH_DAY)):
-        s = 0
-        for j in range(len(ORIG_GRAPH_DAY[i])):
-            if ORIG_GRAPH_DAY[i][j][1] > 0:
-                s += 1
-        print(i, s)
-
-    for i in range(len(ORIG_GRAPH_DAY)):
-        for j in range(len(ORIG_GRAPH_DAY[i])):
-            if ORIG_GRAPH_DAY[i][j] == [0, 1]:
-                print('ALERT!!!')
 main()
