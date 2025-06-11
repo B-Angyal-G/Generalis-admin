@@ -181,11 +181,14 @@ def hun_repair (G):
                             ### VIZSGALAT, HOGY VEGE LESZ-E AZ ALGORITMUSNAK
                             FIND = 1
                             for k in range(len(G)):
-                                if G[k][j] in {[1, 1], [1, 4]}:
+                                if G[k][j] == [1, 1] or G[k][j] == [1, 4]:
                                     FIND = 0
                                     break
                             if FIND == 1:
                                 last = j
+                                break
+                if FIND:
+                    break
 
         ### LEALLAS
         if FIND == 1:
@@ -236,32 +239,59 @@ def graph_max_match (G, RANDOM):
 
 
 
-def graph_bipart_double_init (G, RANDOM):
-    if RANDOM:
-        for i in range(len(G)):
-            if sum(item[1] for item in G[i]) == 0:
-                tmp = list()
-                for j in range(len(G[i])):
-                    if G[i][j] == [1, 0] and sum(rows[j][1] for rows in G) in {0, 1, 4}:
-                        tmp.append(j)
-                if len(tmp) > 0:
-                    rand_item = random.choice(tmp)
-                    G[i][rand_item][1] = 1
-    else:
-        for i in range(len(G)):
-            if sum(item[1] for item in G[i]) == 0:
-                for j in range(len(G[i])):
-                    s = 0
-                    if G[i][j] == [1, 0] and sum(rows[j][1] for rows in G) in {0, 1, 4}:
-                        G[i][j][1] = 1
-                        break
+def graph_bipart_double_init (G, shifts):
+    admins = [set() for i in range(len(G[0]))]
+    for row in range(len(G)):
+        SKIP = 0
+        tmp = list()
+        for col in range(len(G[0])):
+            if G[row][col][1] != 0:
+                SKIP = 1
+                admins[col].add(whois(row, shifts))
+                break
+            if len(admins[col]) < 2 and G[row][col] == [1, 0]:
+                if whois(row, shifts) not in admins[col]:
+                    tmp.append(col)
+        if not SKIP:
+            if len(tmp) != 0:
+                day = random.choice(tmp)
+                G[row][day][1] = 1
+                admins[day].add(whois(row, shifts))
+    return admins
 
-def hun_repair_double(G):
+
+def hun_repair_double_init (G, A, B, shifts, admins):
+    ### MAS MINT A SIMPLE ESET, MERT A KIMARADT 0-AS INDEXU CSUCSOKBOL
+    ### OLYAN CSUCSBA NEM HUZHATUNK ELT, AMELYIKKEL OSSZE VAN KOTVE OLYAN EL,
+    ### AMELYIK UGYANAHHOZ AZ ADMINHOZ TARTOZIK, VAGYIS WHOIS() BENNE VAN ADMINS-BAN
+    OK = 0
+    ### 0-AS INDEXU CSUCSOK KIJELOLESE
+    for i in range(len(G)):
+        if sum(item[1] for item in G[i]) == 0:
+            A[i] = 0
+            OK = 1
+
+    ### 1-ES INDEXU CSUCSOK KIJELOLESE (MEG NEM LEHET JAVITO UT!)
+    if OK:
+        OK = 0
+        for row in range(len(A)):
+            if A[row] == 0:
+                for col in range(len(G[0])):
+                    if G[row][col] == [1, 0] and B[col] == -1 and whois(row, shifts) not in admins[col]:
+                        B[col] = 1
+                        OK = 1
+    if OK:
+        return 1
+    else:
+        return 0
+
+
+def hun_repair_double(G, shifts, admins):
     A = list(-1 for i in range(len(G)))
     B = list(-1 for i in range(len(G[0])))
 
     ### UA MINT SIMPLE ESETBEN
-    OK = hun_repair_init(G, A, B)
+    OK = hun_repair_double_init(G, A, B, shifts, admins)
     enum = 1
     FIND = 0
 
@@ -280,23 +310,26 @@ def hun_repair_double(G):
         if OK:
             enum += 1
             OK = 0
-            for i in range(len(A)):
-                if A[i] == enum - 1:
-                    for j in range(len(G[0])):
+            for row in range(len(A)):
+                if A[row] == enum - 1:
+                    for col in range(len(G[0])):
                         ### VAN EL ES MEG NEM JELOLTUK MEG A HOZZA TARTOZO CSUCSOT
-                        if G[i][j] == [1, 0] and B[j] == -1:
-                            B[j] = enum
+                        if G[row][col] == [1, 0] and B[col] == -1:
+                            B[col] = enum
                             OK = 1
 
                             ### VIZSGALAT, HOGY VEGE LESZ-E AZ ALGORITMUSNAK
-                            FIND = 1
+                            FIND = 0
                             s_edge = 0
                             for k in range(len(G)):
-                                if G[k][j] == [1, 1] or G[k][j] == [1, 4]:
+                                if G[k][col] == [1, 1] or G[k][col] == [1, 4]:
                                     s_edge += 1
                             if s_edge < 2:
                                 FIND = 1
-                                last = j
+                                last = col
+                                break
+                    if FIND:
+                        break
 
         ### LEALLAS
         if FIND == 1:
@@ -339,10 +372,22 @@ def hun_repair_double(G):
 
     return 0
 
-def graph_double_max_match (G, RANDOM):
-    graph_bipart_double_init(G, RANDOM)
-    while hun_repair_double(G):
+
+def graph_double_max_match (G, shifts):
+    admins = graph_bipart_double_init(G, shifts)
+    print('Graph day after initialization:')
+    for i in G:
+        print(i)
+    print()
+    result_check(G, 2)
+    while hun_repair_double(G, shifts, admins):
         pass
+    print('Graph day after repair:')
+    for i in G:
+        print(i)
+    print()
+    result_check(G, 2)
+
 
 def make_graph (ORIG_TABLE, SHIFT, DAYS):
     ### GRAFOK LETREHOZASA
@@ -417,10 +462,7 @@ def make_graph (ORIG_TABLE, SHIFT, DAYS):
 def request_check (ORIG_TABLE):
     DAYS = len(ORIG_TABLE[0]) - 3
     ERROR = 0
-    print('ELLENORZESEK')
-    for i in ORIG_TABLE:
-        print(i)
-    print()
+
     ### ### ELLENORZES, HOGY PONTOSAN ANNYI KIOSZTANDO MUSZAK VAN-E AHANY NAP
     day_shift = 0
     night_shift = 0
@@ -489,6 +531,58 @@ def request_check (ORIG_TABLE):
     if ERROR:
         return 0
     return 1
+
+
+def result_check(GRAPH, SCALE):
+    OK = 1
+    if SCALE != 3:
+        for row in range(len(GRAPH)):
+            s = 0
+            for col in GRAPH[row]:
+                if col[1] != 0:
+                    s += 1
+            if s > 1:
+                OK = 0
+                print('ALERT:', row, 'sorban tobb el lett kivalasztva', s)
+            elif s < 1:
+                OK = 0
+                print('ALERT:', row, 'sorban kevesebb lett kivalasztva', s)
+
+        for col in range(len(GRAPH[0])):
+            s = 0
+            for row in GRAPH:
+                if row[col][1] != 0:
+                    s += 1
+            if s > SCALE:
+                OK = 0
+                print('ALERT:', col, 'col tobb el lett kivalasztva', s)
+            elif s < SCALE:
+                OK = 0
+                print('ALERT:', col, 'col kevesebb lett kivalasztva', s)
+
+        if OK:
+            if SCALE == 2:
+                print('ELLENORZES RENDBEN: DAYS')
+            if SCALE == 1:
+                print('ELLENORZES RENDBEN: NIGHTS')
+    else:
+        OK = 1
+        for col in range(1, len(GRAPH[0])):
+            d = 0
+            e = 0
+            for row in range(len(GRAPH)):
+                if GRAPH[row][col] == 'N':
+                    d += 1
+                elif GRAPH[row][col] == 'E':
+                    e += 1
+            if d != 2:
+                OK = 0
+                print('ALERT', col, 'napon nincs eleg nappalos!')
+            if e != 1:
+                OK = 0
+                print('ALERT', col, 'napon nincs eleg ejszakas!')
+        if OK:
+            print('Minden rendben!')
 
 
 def whois(row, shifts):
@@ -572,6 +666,21 @@ def main():
     ORIG_GRAPH_DAY = make_graph(ORIG_TABLE, 'DAY', DAYS)
     ORIG_GRAPH_NIGHT = make_graph(ORIG_TABLE, 'NIGHT', DAYS)
 
+    # print('ORIG_TABLE:')
+    # for i in ORIG_TABLE:
+    #     print(i)
+    # print()
+
+    # print('ORIG_GRAPH_DAY:')
+    # for i in ORIG_GRAPH_DAY:
+    #     print(i)
+    # print()
+
+    # print('ORIG_GRAPH_NIGHT:')
+    # for i in ORIG_GRAPH_NIGHT:
+    #     print(i)
+    # print()
+
     while True:
         ### EREDETI GRAFOKAT NEM MODOSITJUK,
         ### AZ ALABBI GRAFOKKAL FOGUNK TOVABB DOLGOZNI
@@ -579,7 +688,7 @@ def main():
         graph_night = c.deepcopy(ORIG_GRAPH_NIGHT)
 
         ### NAPPALI BEOSZTAS GENERALASA
-        graph_double_max_match(graph_day, 1)
+        graph_double_max_match(graph_day, day_shifts)
 
         ### EJSZAKAI MUSZAKOKHOZ TARTOZO GRAF MODOSITASA
         ### A GENERALASNAK MEGFELELOEN
@@ -595,16 +704,32 @@ def main():
                     break
 
         ### EJSZAKAI MUSZAKOK GENERALASA
-        graph_double_max_match(graph_night, 1)
+        graph_max_match(graph_night, 1)
+        # print('\n')
+        # print('graph_day:')
+        # for i in graph_day:
+        #     print(i)
+        # print()
+        result_check(graph_day, 2)
+
+        print('graph_night:')
+        # for i in graph_night:
+        #     print(i)
+        # print()
+        result_check(graph_night, 1)
         break
 
     final_table = graph_merge(graph_day, graph_night, day_shifts, night_shifts, admins, DAYS)
     e = 0
     n = 0
+    print('NAME\t\t', end=' ')
+    for i in range(DAYS):
+        print(i + 1, end=' ')
+    print()
     for i in final_table:
         for j in range(len(i)):
             if j == 0:
-                print(i[j], end='\t')
+                print(i[j], end='\t|')
             else:
                 if i[j] != '':
                     print(i[j], end=' ')
@@ -617,6 +742,6 @@ def main():
         print()
     print(n)
     print(e)
-
+    result_check(final_table, 3)
 
 main()
