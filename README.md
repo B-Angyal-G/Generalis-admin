@@ -1,6 +1,10 @@
 # Generalis-admin
 Beosztásgeneráló SBO adminisztrátoroknak.
 
+Szükséges az openpyxl könyvtár telepítése pythonhoz:
+1. pip install openpyxl
+2. IDE saját rendszerén belül
+
 Rövid ismertető XLSX kérések megadásához:
 x  : adott napon sem nappalos, sem éjszakás, sem lelépős nem lehet
 y  : adott napon sem nappalos, sem éjszakás nem lehet
