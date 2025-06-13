@@ -1,4 +1,3 @@
-import copy
 import random
 import copy as c
 from openpyxl import load_workbook
@@ -129,9 +128,6 @@ def hun_repair(G):
 
 def graph_max_match(G):
     graph_bipart_init(G)
-    print('Graph night after initialization:')
-    result_check(G, 1)
-    print()
     REPAIR = hun_repair(G)
     while REPAIR == 1:
         REPAIR = hun_repair(G)
@@ -158,11 +154,6 @@ def graph_bipart_double_init(G, shifts, admins):
                 day = random.choice(tmp)
                 G[row][day][1] = 1
                 admins[day].add(whois(row, shifts))
-    print('IN BIPART_DOUBLE_INIT:')
-    for i in range(len(admins)):
-        print(i + 1, admins[i])
-    print(whois(59, shifts))
-    return admins
 
 def hun_repair_double_init(G, A, B, shifts, admins):
     ### MAS MINT A SIMPLE ESET, MERT A KIMARADT 0-AS INDEXU CSUCSOKBOL
@@ -277,22 +268,8 @@ def hun_repair_double(G, shifts, admins):
 
 def graph_double_max_match(G, shifts, admins):
     graph_bipart_double_init(G, shifts, admins)
-    print('Graph day after initialization:')
-    # for i in G:
-    #     print(i)
-    # print()
-    result_check(G, 2)
-    print()
     while hun_repair_double(G, shifts, admins):
         pass
-    print('Graph day after repair:')
-    # for i in G:
-    #     print(i)
-    # print()
-    result_check(G, 2)
-    print()
-    print()
-
 
 
 ### KOZOS HASZNALATU FUGGVENYEK
@@ -351,11 +328,10 @@ def make_graph(ORIG_TABLE, admins, shifts, SHIFT, DAYS):
                 for row in range(admin_index, admin_index + shifts[s]):
                     if row != serial_num + admin_index:
                         ORIG_GRAPH[row][col][1] = 0
-                        # print('ATIRVA!', s + 1, 'ADMIN', col + 1, 'nap', 'AMDIN INDEX', admin_index)
                 serial_num += 1
         ### ### HA A LEGUTOLSO ADMINNAL 0 SZEREPEL MUSZAKSZAMNAK,
         ### ### AKKOR MAR NEM KELL NOVELNI, KULONBEN KIINDEXEL A GRAFBOL
-        if s + 1 < len(shifts) - 1:
+        if s < len(shifts) - 1:
             if shifts[s + 1] != 0:
                 admin_index += shifts[s]
 
@@ -506,22 +482,183 @@ def final_check(table_fin, day_shifts, night_shifts):
                 e += 1
         if d < 2:
             OK = 0
-            print('ALERT', col, 'napon nincs eleg nappalos!')
+            # print('ALERT', col, 'napon nincs eleg nappalos!')
         elif d > 2:
             OK = 0
-            print('ALERT', col, 'napon tul sok a nappalos!')
+            # print('ALERT', col, 'napon tul sok a nappalos!')
         if e < 1:
             OK = 0
-            print('ALERT', col, 'napon nincs eleg ejszakas!')
+            # print('ALERT', col, 'napon nincs eleg ejszakas!')
         elif e > 1:
             OK = 0
-            print('ALERT', col, 'napon tul sok az ejszakas!')
-    if OK:
-        print('Minden rendben!')
+            # print('ALERT', col, 'napon tul sok az ejszakas!')
+    for row in range(len(table_fin)):
+        d = 0
+        e = 0
+        for col in range(1, len(table_fin[0])):
+            if table_fin[row][col] == 'N':
+                d += 1
+            elif table_fin[row][col] == 'E':
+                e += 1
+        if d != day_shifts[row]:
+            # print('ALERT', table_fin[row][0], 'adminnak kevesebb lett a nappalja.')
+            OK = 0
+        if e != night_shifts[row]:
+            # print('ALERT', table_fin[row][0], 'adminnak kevesebb lett az ejszakaja.')
+            OK = 0
 
-def eval_table(table_fin):
-    # MEGIRANDO
-    pass
+    if OK:
+        # print('Minden rendben!')
+        return 1
+    else:
+        return 0
+
+def eval_table(table_fin, sat_orig, sun_orig):
+    PRINT = 0
+    ### ERTEKEK FINOMHANGOLASA
+    VALUE = 100000
+    #                    2   3    4    5     6     7     8
+    penalty_val = [0, 0, 50, 200, 1000, 3000, 4000, 8000, 10000]
+
+    #                          2    3     4     5
+    penalty_night_val = [0, 0, 100, 2500, 5000, 10000]
+    
+    #                    2   3   4    5    6
+    reward_val = [0, 0, 80, 200, 350, 500, 800] 
+
+    table_string = ['.' for i in range(len(table_fin))]
+    admin_shifts = [[[], [], 0] for i in range(len(table_fin))]
+
+    for admin in range(len(table_fin)):
+        for day in range(1, len(table_fin[0])):
+            if table_fin[admin][day] == '':
+                table_string[admin] += '.'
+            elif table_fin[admin][day] in {'N', 'E'}:
+                table_string[admin] += table_fin[admin][day]
+        table_string[admin] += '.'
+        
+    if PRINT:
+        for st in table_string:
+            print(st)
+        print()
+
+    ### BUNTETOPONTOK LEVONASA A TUL SURU MUSZAKOKERT
+    if PRINT:
+        print('Buntetopontok:')
+    admin = -1
+    for st in table_string:
+        s = 0
+        admin += 1
+        sat = 0
+        sun = 0
+        while s < len(st) - 1:
+            if st[s] == '.':
+                c = 0
+                if s + c + 1 < len(st):  
+                    while st[s + c + 1] != '.':
+                        c += 1
+                        if s + c + 1 in sat_orig:
+                            sat += 1
+                        elif s + c + 1 in sun_orig:
+                            sun += 1
+                    if c > 0:
+                        # if c >= 8:
+                        #     VALUE -= penalty_val[8]
+                        # else:
+                        #     VALUE -= penalty_val[c]
+                        admin_shifts[admin][0].append(c)
+                        if PRINT:
+                            print(c, end=' ')
+                    s = s + c + 1
+        admin_shifts[admin][2] += sat
+        admin_shifts[admin][2] += sun
+        if PRINT:
+            print()
+
+    ### BUNTETOPONTOK LEVONASA A TUL SURU EJJELEKERT
+    if PRINT:
+        print('Buntetopontok a suru ejjelekert:')
+    admin = -1
+    for st in table_string:
+        s = 1
+        admin += 1
+        while s < len(st) - 1:
+            c = 1
+            if st[s] == 'E':
+                while s + c < len(st) - 1:
+                    if st[s + c] == 'E':
+                        c += 1
+                    else:
+                        break
+                if c > 0:
+                    # if c >= 5:
+                    #     VALUE -= penalty_val[5]
+                    # else:
+                    #     VALUE -= penalty_val[c]
+                    admin_shifts[admin][1].append(c)
+                if PRINT:
+                    print(c, end=' ')
+            s += c
+        if PRINT:
+            print()
+    
+    ### ERTEKELES KISZAMITASA
+    weekend = 0
+    weekend += len(sat_orig)
+    weekend += len(sun_orig)
+    weekend *= weekend
+    sum_shifts = 3 * (len(table_fin[0]) - 1)
+    for admin in admin_shifts:
+        for s in admin[0]:
+            if s > 8:
+                VALUE -= penalty_val[8]
+            else:
+                VALUE -= penalty_val[s]
+        for s in admin[1]:
+            if s > 5:
+                VALUE -= penalty_night_val[5]
+            else:
+                VALUE -= penalty_night_val[s]
+        opt_weekend = sum(admin[0])*weekend/sum_shifts
+        w = abs(admin[2] - opt_weekend)
+        if w > 2:
+            VALUE -= 10000
+        elif w > 1:
+            VALUE -= 3000
+        elif w > 0:
+            VALUE -= 200
+
+    ### JUTALOMPONTOK HOZZAADASA A SZABADNAPOKERT
+    # print('Jutalom pontok:')
+    # for st in table_string:
+    #     s = 1
+    #     while s < len(st) - 1:
+    #         c = 1
+    #         if st[s] == '.':
+    #             while s + c < len(st) - 1:
+    #                 if st[s + c] == '.':
+    #                     c += 1
+    #                 else:
+    #                     break
+    #             if c > 0:
+    #                 if c >= 6:
+    #                     VALUE += reward_val[6]
+    #                 else:
+    #                     VALUE += reward_val[c]
+    #             print(c, end=' ')
+    #         s += c
+    #     print()
+    if PRINT:
+        print(VALUE)
+        print()
+        for i in admin_shifts:
+            print(i)
+        print()
+        print('-'*100)
+        print()
+
+    return VALUE
+
 
 
 def main():
@@ -571,111 +708,84 @@ def main():
         return 0
 
     ### GRAFOK LETREHOZASA
-    ADMINS_ORIG = [set() for i in range(DAYS)]
+    ORIG_ADMINS = [set() for i in range(DAYS)]
     day_shifts = [ORIG_TABLE[i][1] for i in range(len(ORIG_TABLE))]
     night_shifts = [ORIG_TABLE[i][2] for i in range(len(ORIG_TABLE))]
-    ORIG_GRAPH_DAY = make_graph(ORIG_TABLE, ADMINS_ORIG, day_shifts,  'DAY', DAYS)
-    ORIG_GRAPH_NIGHT = make_graph(ORIG_TABLE, ADMINS_ORIG, night_shifts,  'NIGHT', DAYS)
-
-    # print('ORIG_TABLE:')
-    # for i in ORIG_TABLE:
-    #     print(i)
-    # print()
-
-    # print('ORIG_GRAPH_DAY:')
-    # for i in ORIG_GRAPH_DAY:
-    #     print(i)
-    # print()
-
-    # print('ORIG_GRAPH_NIGHT:')
-    # for i in ORIG_GRAPH_NIGHT:
-    #     print(i)
-    # print()
+    ORIG_GRAPH_DAY = make_graph(ORIG_TABLE, ORIG_ADMINS, day_shifts,  'DAY', DAYS)
+    ORIG_GRAPH_NIGHT = make_graph(ORIG_TABLE, ORIG_ADMINS, night_shifts,  'NIGHT', DAYS)
 
     ### GENERALAS KEZDESE
-    GENERATION = 1
-    while GENERATION:
-        GENERATION = 0
-        admins = copy.deepcopy(ADMINS_ORIG)
-        ### EREDETI GRAFOKAT NEM MODOSITJUK,
-        ### AZ ALABBI GRAFOKKAL FOGUNK TOVABB DOLGOZNI
-        graph_day = c.deepcopy(ORIG_GRAPH_DAY)
-        graph_night = c.deepcopy(ORIG_GRAPH_NIGHT)
+    SZUMMA = 0
+    best_gen_value = -100000
+    best_gen_table = list()
+    SUM_GEN = 25
+    for i in range(SUM_GEN):
+        GENERATION = 1
+        while GENERATION:
+            GENERATION = 0
+            admins = c.deepcopy(ORIG_ADMINS)
+            ### EREDETI GRAFOKAT NEM MODOSITJUK,
+            ### AZ ALABBI GRAFOKKAL FOGUNK TOVABB DOLGOZNI
+            graph_day = c.deepcopy(ORIG_GRAPH_DAY)
+            graph_night = c.deepcopy(ORIG_GRAPH_NIGHT)
 
-        ### NAPPALI BEOSZTAS GENERALASA
-        graph_double_max_match(graph_day, day_shifts, admins)
+            ### NAPPALI BEOSZTAS GENERALASA
+            graph_double_max_match(graph_day, day_shifts, admins)
 
-        ### EJSZAKAI MUSZAKOKHOZ TARTOZO GRAF MODOSITASA
-        ### A GENERALASNAK MEGFELELOEN
-        for row in range(len(graph_day)):
-            for col in range(len(graph_day[row])):
-                if graph_day[row][col][1] == 1:
-                    admin = whois(row, day_shifts)
-                    admin_index = sum(night_shifts[:admin])
-                    for row_mod in range(admin_index, admin_index + night_shifts[admin]):
-                        graph_night[row_mod][col][0] = 0
-                        if col - 1 >= 0:
-                            graph_night[row_mod][col - 1][0] = 0
-                    break
+            ### EJSZAKAI MUSZAKOKHOZ TARTOZO GRAF MODOSITASA
+            ### A GENERALASNAK MEGFELELOEN
+            for row in range(len(graph_day)):
+                for col in range(len(graph_day[row])):
+                    if graph_day[row][col][1] == 1:
+                        admin = whois(row, day_shifts)
+                        admin_index = sum(night_shifts[:admin])
+                        for row_mod in range(admin_index, admin_index + night_shifts[admin]):
+                            graph_night[row_mod][col][0] = 0
+                            if col - 1 >= 0:
+                                graph_night[row_mod][col - 1][0] = 0
+                        break
 
-        ### EJSZAKAI MUSZAKOK GENERALASA
-        gen_night = graph_max_match(graph_night)
-        num = 0
-        if gen_night == 0:
-            num += 1
-            GENERATION = 1
-            print('num:', num)
-        else:
-            # print('\n')
-            # print('graph_day:')
-            # for i in graph_day:
-            #     print(i)
-            # print()
-            # result_check(graph_day, 2)
-
-            print('graph_night:')
-            # for i in graph_night:
-            #     print(i)
-            # print()
-            # result_check(graph_night, 1)
-
-            final_table = graph_merge(graph_day, graph_night, day_shifts, night_shifts, admins_name, DAYS)
-            e = 0
-            n = 0
-            print('NAME'.center(21, ' '), end='\t ')
-            for i in range(DAYS):
-                if i < 9:
-                    print(i + 1, end='  ')
+            ### EJSZAKAI MUSZAKOK GENERALASA
+            gen_night = graph_max_match(graph_night)
+            if gen_night == 0:
+                GENERATION = 1
+            else:
+                final_table = graph_merge(graph_day, graph_night, day_shifts, night_shifts, admins_name, DAYS)
+                if final_check(final_table, day_shifts, night_shifts):
+                    GENERATION = 0
+                    current_value = eval_table(final_table, sat_orig, sun_orig)
+                    if current_value > best_gen_value:
+                        best_gen_value = current_value
+                        best_gen_table = c.deepcopy(final_table)
                 else:
-                    print(i + 1, end=' ')
-            print()
-            for i in final_table:
-                for j in range(len(i)):
-                    if j == 0:
-                        print(i[j].ljust(21, ' '), end='\t|')
-                    else:
-                        if i[j] != '':
-                            print(i[j], end='  ')
-                            if i[j] == 'E':
-                                e += 1
-                            if i[j] == 'N':
-                                n += 1
-                        else:
-                            print(' ', end='  ')
-                print()
-            print(n)
-            print(e)
-            result_check(final_table, 3)
+                    GENERATION = 1
 
-            a = input('Graph print: ')
-            if a in {'e', 'E'}:
-                for i in graph_night:
-                    print(i)
-                print()
-            elif a in {'n', 'N'}:
-                for i in graph_day:
-                    print(i)
-                print()
+    e = 0
+    n = 0
+    print(SUM_GEN, 'generálásból a legjobbnak vélt beosztás:')
+    print()
+    print('NAME'.center(21, ' '), end='\t ')
+    for i in range(DAYS):
+        if i < 9:
+            print(i + 1, end='  ')
+        else:
+            print(i + 1, end=' ')
+    print()
+    for i in best_gen_table:
+        for j in range(len(i)):
+            if j == 0:
+                print(i[j].ljust(21, ' '), end='\t|')
+            else:
+                if i[j] != '':
+                    print(i[j], end='  ')
+                    if i[j] == 'E':
+                        e += 1
+                    if i[j] == 'N':
+                        n += 1
+                else:
+                    print(' ', end='  ')
+        print()
+    print('\nÉrtékelés:', best_gen_value)
 
 
 main()
