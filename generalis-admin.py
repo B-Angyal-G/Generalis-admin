@@ -438,6 +438,7 @@ def request_check(ORIG_TABLE):
     if ERROR:
         return 0
     return 1
+
 def result_check(GRAPH, SCALE):
     OK = 1
     for row in range(len(GRAPH)):
@@ -507,24 +508,72 @@ def final_check(table_fin, day_shifts, night_shifts):
             # print('ALERT', table_fin[row][0], 'adminnak kevesebb lett az ejszakaja.')
             OK = 0
 
+    ### SZABALYOK: NEM LEHET 3 EGYFORMA MUSZAK EGYMAS UTAN,
+    ### VALAMINT NEM LEHET 4 VAN ANNAL NAP MUSZAKBAN EGYMAS UTAN
+    for st in table_fin:
+        s = 1
+        d = 0
+        n = 0
+        while s < len(st):
+            if st[s] == 'N':
+                d += 1
+            elif st[s] == 'E':
+                n += 1
+            else:
+                d = 0
+                n = 0
+            if d == 3 or n == 3:
+                # print()
+                # niceprint(table_fin, len(table_fin[0]) - 1)
+                # input()
+                return 0
+            if d + n == 4:
+                # print()
+                # niceprint(table_fin, len(table_fin[0]) - 1)
+                # input()
+                return 0
+            s += 1
+
     if OK:
         # print('Minden rendben!')
         return 1
     else:
         return 0
 
+def pattern_count(row, pattern):
+    row_tmp = c.deepcopy(row)
+    l = len(pattern)
+    for i in range(len(row_tmp)):
+        if row_tmp[i] in {'N', 'E'}:
+            row_tmp[i] = '*'
+
+    s = 0
+    current = ''
+    for i in range(l):
+        current += row_tmp[1 + i]
+    if current == pattern:
+        s += 1
+
+    print(current)
+    for i in range(1 + l, len(row_tmp)):
+        current = current[1:]
+        current += row_tmp[i]
+        if current == pattern:
+            s += 1
+        print(current, s)
+    return s
+
 def eval_table(table_fin, sat_orig, sun_orig):
     PRINT = 0
     ### ERTEKEK FINOMHANGOLASA
     VALUE = 100000
-    #                    2   3    4    5     6     7     8
-    penalty_val = [0, 0, 50, 200, 1000, 3000, 4000, 8000, 10000]
+    #                    2   3
+    penalty_val = [0, 0, 100, 2000]
 
-    #                          2    3     4     5
-    penalty_night_val = [0, 0, 100, 2500, 5000, 10000]
-    
-    #                    2   3   4    5    6
-    reward_val = [0, 0, 80, 200, 350, 500, 800] 
+    #                          2    3
+    penalty_night_val = [0, 0, 1000]
+
+    pattern = [['.**.**.', 1000], ['.***.', 600], ['.**.*.', 400]]
 
     table_string = ['.' for i in range(len(table_fin))]
     admin_shifts = [[[], [], 0] for i in range(len(table_fin))]
@@ -554,7 +603,7 @@ def eval_table(table_fin, sat_orig, sun_orig):
         while s < len(st) - 1:
             if st[s] == '.':
                 c = 0
-                if s + c + 1 < len(st):  
+                if s + c + 1 < len(st):
                     while st[s + c + 1] != '.':
                         c += 1
                         if s + c + 1 in sat_orig:
@@ -562,10 +611,6 @@ def eval_table(table_fin, sat_orig, sun_orig):
                         elif s + c + 1 in sun_orig:
                             sun += 1
                     if c > 0:
-                        # if c >= 8:
-                        #     VALUE -= penalty_val[8]
-                        # else:
-                        #     VALUE -= penalty_val[c]
                         admin_shifts[admin][0].append(c)
                         if PRINT:
                             print(c, end=' ')
@@ -591,10 +636,6 @@ def eval_table(table_fin, sat_orig, sun_orig):
                     else:
                         break
                 if c > 0:
-                    # if c >= 5:
-                    #     VALUE -= penalty_val[5]
-                    # else:
-                    #     VALUE -= penalty_val[c]
                     admin_shifts[admin][1].append(c)
                 if PRINT:
                     print(c, end=' ')
@@ -609,11 +650,11 @@ def eval_table(table_fin, sat_orig, sun_orig):
     weekend *= weekend
     sum_shifts = 3 * (len(table_fin[0]) - 1)
     for admin in admin_shifts:
-        for s in admin[0]:
-            if s > 8:
-                VALUE -= penalty_val[8]
-            else:
-                VALUE -= penalty_val[s]
+        # for s in admin[0]:
+        #     if s > 8:
+        #         VALUE -= penalty_val[8]
+        #     else:
+        #         VALUE -= penalty_val[s]
         for s in admin[1]:
             if s > 5:
                 VALUE -= penalty_night_val[5]
@@ -628,26 +669,10 @@ def eval_table(table_fin, sat_orig, sun_orig):
         elif w > 0:
             VALUE -= 200
 
-    ### JUTALOMPONTOK HOZZAADASA A SZABADNAPOKERT
-    # print('Jutalom pontok:')
-    # for st in table_string:
-    #     s = 1
-    #     while s < len(st) - 1:
-    #         c = 1
-    #         if st[s] == '.':
-    #             while s + c < len(st) - 1:
-    #                 if st[s + c] == '.':
-    #                     c += 1
-    #                 else:
-    #                     break
-    #             if c > 0:
-    #                 if c >= 6:
-    #                     VALUE += reward_val[6]
-    #                 else:
-    #                     VALUE += reward_val[c]
-    #             print(c, end=' ')
-    #         s += c
-    #     print()
+    for row in table_fin:
+        for p in pattern:
+            VALUE -= pattern_count(row, p[0])*p[1]
+
     if PRINT:
         print(VALUE)
         print()
@@ -658,6 +683,25 @@ def eval_table(table_fin, sat_orig, sun_orig):
         print()
 
     return VALUE
+
+def niceprint(final_table, DAYS):
+    print('NAME'.center(21, ' '), end='\t ')
+    for i in range(DAYS):
+        if i < 9:
+            print(i + 1, end='  ')
+        else:
+            print(i + 1, end=' ')
+    print()
+    for i in final_table:
+        for j in range(len(i)):
+            if j == 0:
+                print(i[j].ljust(21, ' '), end='\t|')
+            else:
+                if i[j] != '':
+                    print(i[j], end='  ')
+                else:
+                    print(' ', end='  ')
+        print()
 
 
 
@@ -703,6 +747,13 @@ def main():
         sun[i] -= 1
     # HETVEGEK DATUMAINAK GENERALASA VEGE
 
+    # KULSOSOK MUSZAKJAI
+    s = 0
+    for d in range(len(ORIG_TABLE[0])):
+        if ORIG_TABLE[-1][d] == None:
+            if d - 2 not in sat_orig and d - 2 not in sun_orig:
+                ORIG_TABLE[-1][d] = 'x'
+
     ### ELLENORZESEK
     if request_check(ORIG_TABLE) == 0:
         return 0
@@ -718,10 +769,14 @@ def main():
     SZUMMA = 0
     best_gen_value = -100000
     best_gen_table = list()
-    SUM_GEN = 25
+    SUM_GEN = 1
+    GEN = 0
     for i in range(SUM_GEN):
+        if i > 0:
+            print('Elkészített beosztások:', i, '/', SUM_GEN)
         GENERATION = 1
         while GENERATION:
+            GEN += 1
             GENERATION = 0
             admins = c.deepcopy(ORIG_ADMINS)
             ### EREDETI GRAFOKAT NEM MODOSITJUK,
@@ -759,33 +814,14 @@ def main():
                         best_gen_table = c.deepcopy(final_table)
                 else:
                     GENERATION = 1
+            if GEN % 100 == 0:
+                print('G:', GEN)
 
-    e = 0
-    n = 0
     print(SUM_GEN, 'generálásból a legjobbnak vélt beosztás:')
     print()
-    print('NAME'.center(21, ' '), end='\t ')
-    for i in range(DAYS):
-        if i < 9:
-            print(i + 1, end='  ')
-        else:
-            print(i + 1, end=' ')
+    niceprint(best_gen_table, DAYS)
     print()
-    for i in best_gen_table:
-        for j in range(len(i)):
-            if j == 0:
-                print(i[j].ljust(21, ' '), end='\t|')
-            else:
-                if i[j] != '':
-                    print(i[j], end='  ')
-                    if i[j] == 'E':
-                        e += 1
-                    if i[j] == 'N':
-                        n += 1
-                else:
-                    print(' ', end='  ')
-        print()
-    print('\nÉrtékelés:', best_gen_value)
-
+    print('Értékelés:', best_gen_value)
+    print('Generalas:', GEN)
 
 main()
