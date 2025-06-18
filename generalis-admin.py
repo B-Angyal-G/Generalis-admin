@@ -1,3 +1,4 @@
+from os import system, name
 import random
 import copy as c
 from openpyxl import load_workbook
@@ -542,10 +543,9 @@ def final_check(table_fin, day_shifts, night_shifts):
 
 def pattern_count(row, pattern):
     row_tmp = c.deepcopy(row)
+    row_tmp = row_tmp.replace('N', '*')
+    row_tmp = row_tmp.replace('E', '*')
     l = len(pattern)
-    for i in range(len(row_tmp)):
-        if row_tmp[i] in {'N', 'E'}:
-            row_tmp[i] = '*'
 
     s = 0
     current = ''
@@ -554,20 +554,83 @@ def pattern_count(row, pattern):
     if current == pattern:
         s += 1
 
-    print(current)
+    # print(current)
     for i in range(1 + l, len(row_tmp)):
         current = current[1:]
         current += row_tmp[i]
         if current == pattern:
             s += 1
-        print(current, s)
+        # print(current, s)
     return s
 
 def eval_table(table_fin, sat_orig, sun_orig):
     PRINT = 0
+
+    VALUE = 10000
+    pattern = [['.**.', 35], ['.***.', 170], ['.**.*.', 40], ['.**.**.', 80], ['.***..**.', 115]]
+
+    ### MINDEN EGYES ADMINHOZ TARTOZIK EGY KETELEMU LISTA,
+    ### MELYNEK AZ ELSO ELEME AZ OSSZES MUSZAKJA, A MASODIK A HETVEGERE ESO MUSZAKJAI
+    admin_shifts = [ [0, 0] for i in range(len(table_fin)) ]
+
+    table_string = ['.' for i in range(len(table_fin))]
+    for admin in range(len(table_fin)):
+        s = 0
+        w = 0
+        for day in range(1, len(table_fin[0])):
+            if table_fin[admin][day] == '':
+                table_string[admin] += '.'
+            elif table_fin[admin][day] in {'N', 'E'}:
+                s += 1
+                table_string[admin] += table_fin[admin][day]
+                if day in sat_orig or day in sun_orig:
+                    w += 1
+        admin_shifts[admin][0] = s
+        admin_shifts[admin][1] = w
+        table_string[admin] += '.'
+
+    weekend = 0
+    weekend += len(sat_orig)
+    weekend += len(sun_orig)
+    weekend *= 3
+    sum_shifts = 3 * (len(table_fin[0]) - 1)
+    for admin in admin_shifts:
+        opt_weekend = admin[0]*weekend/sum_shifts
+        w = abs(admin[1] - opt_weekend)
+        if w > 2:
+            VALUE -= 120
+        elif w > 1:
+            VALUE -= 50
+        elif w > 0:
+            VALUE -= 20
+
+    for row in table_string:
+        for p in pattern:
+            VALUE -= pattern_count(row, p[0])*p[1]
+
+    if PRINT:
+        for i in table_fin:
+            print(i)
+        print()
+        print(VALUE)
+        print()
+        for i in admin_shifts:
+            print(i)
+        print()
+        print('-'*100)
+        print()
+
+    return VALUE
+
+
+
+
+
+def eval_table_old(table_fin, sat_orig, sun_orig):
+    PRINT = 0
     ### ERTEKEK FINOMHANGOLASA
     VALUE = 100000
-    #                    2   3
+    #                    2    3
     penalty_val = [0, 0, 100, 2000]
 
     #                          2    3
@@ -576,7 +639,8 @@ def eval_table(table_fin, sat_orig, sun_orig):
     pattern = [['.**.**.', 1000], ['.***.', 600], ['.**.*.', 400]]
 
     table_string = ['.' for i in range(len(table_fin))]
-    admin_shifts = [[[], [], 0] for i in range(len(table_fin))]
+    admin_shifts = list(range(len(table_string)))
+    # admin_shifts = [[[], [], 0] for i in range(len(table_fin))]
 
     for admin in range(len(table_fin)):
         for day in range(1, len(table_fin[0])):
@@ -596,50 +660,62 @@ def eval_table(table_fin, sat_orig, sun_orig):
         print('Buntetopontok:')
     admin = -1
     for st in table_string:
-        s = 0
-        admin += 1
         sat = 0
         sun = 0
-        while s < len(st) - 1:
-            if st[s] == '.':
-                c = 0
-                if s + c + 1 < len(st):
-                    while st[s + c + 1] != '.':
-                        c += 1
-                        if s + c + 1 in sat_orig:
-                            sat += 1
-                        elif s + c + 1 in sun_orig:
-                            sun += 1
-                    if c > 0:
-                        admin_shifts[admin][0].append(c)
-                        if PRINT:
-                            print(c, end=' ')
-                    s = s + c + 1
-        admin_shifts[admin][2] += sat
-        admin_shifts[admin][2] += sun
+        admin += 1
+        for d in sat_orig:
+            if st[d] != '.':
+                sat += 1
+        for d in sun_orig:
+            if st[d] != '.':
+                sun += 1
+        admin_shifts[admin] = sat + sun
+
+    # for st in table_string:
+    #     s = 0
+    #     admin += 1
+    #     sat = 0
+    #     sun = 0
+    #     while s < len(st) - 1:
+    #         if st[s] == '.':
+    #             c = 0
+    #             if s + c + 1 < len(st):
+    #                 while st[s + c + 1] != '.':
+    #                     c += 1
+    #                     if s + c + 1 in sat_orig:
+    #                         sat += 1
+    #                     elif s + c + 1 in sun_orig:
+    #                         sun += 1
+    #                 if c > 0:
+    #                     admin_shifts[admin][0].append(c)
+    #                     if PRINT:
+    #                         print(c, end=' ')
+    #                 s = s + c + 1
+    #     admin_shifts[admin][2] += sat
+    #     admin_shifts[admin][2] += sun
         if PRINT:
             print()
 
     ### BUNTETOPONTOK LEVONASA A TUL SURU EJJELEKERT
-    if PRINT:
-        print('Buntetopontok a suru ejjelekert:')
-    admin = -1
-    for st in table_string:
-        s = 1
-        admin += 1
-        while s < len(st) - 1:
-            c = 1
-            if st[s] == 'E':
-                while s + c < len(st) - 1:
-                    if st[s + c] == 'E':
-                        c += 1
-                    else:
-                        break
-                if c > 0:
-                    admin_shifts[admin][1].append(c)
-                if PRINT:
-                    print(c, end=' ')
-            s += c
+    # if PRINT:
+    #     print('Buntetopontok a suru ejjelekert:')
+    # admin = -1
+    # for st in table_string:
+    #     s = 1
+    #     admin += 1
+    #     while s < len(st) - 1:
+    #         c = 1
+    #         if st[s] == 'E':
+    #             while s + c < len(st) - 1:
+    #                 if st[s + c] == 'E':
+    #                     c += 1
+    #                 else:
+    #                     break
+    #             if c > 0:
+    #                 admin_shifts[admin][1].append(c)
+    #             if PRINT:
+    #                 print(c, end=' ')
+    #         s += c
         if PRINT:
             print()
     
@@ -655,11 +731,11 @@ def eval_table(table_fin, sat_orig, sun_orig):
         #         VALUE -= penalty_val[8]
         #     else:
         #         VALUE -= penalty_val[s]
-        for s in admin[1]:
-            if s > 5:
-                VALUE -= penalty_night_val[5]
-            else:
-                VALUE -= penalty_night_val[s]
+        # for s in admin[1]:
+        #     if s > 5:
+        #         VALUE -= penalty_night_val[5]
+        #     else:
+        #         VALUE -= penalty_night_val[s]
         opt_weekend = sum(admin[0])*weekend/sum_shifts
         w = abs(admin[2] - opt_weekend)
         if w > 2:
@@ -685,7 +761,7 @@ def eval_table(table_fin, sat_orig, sun_orig):
     return VALUE
 
 def niceprint(final_table, DAYS):
-    print('NAME'.center(21, ' '), end='\t ')
+    print('NÉV'.center(21, ' '), end='\t ')
     for i in range(DAYS):
         if i < 9:
             print(i + 1, end='  ')
@@ -769,11 +845,9 @@ def main():
     SZUMMA = 0
     best_gen_value = -100000
     best_gen_table = list()
-    SUM_GEN = 1
+    SUM_GEN = 3
     GEN = 0
     for i in range(SUM_GEN):
-        if i > 0:
-            print('Elkészített beosztások:', i, '/', SUM_GEN)
         GENERATION = 1
         while GENERATION:
             GEN += 1
@@ -815,13 +889,19 @@ def main():
                 else:
                     GENERATION = 1
             if GEN % 100 == 0:
-                print('G:', GEN)
+                if name == 'nt':
+                    _ = system('cls')
+                else:
+                    _ = system('clear')
+                print('Eddigi próbálkozások száma:', GEN)
+                print('Sikeresen elkészített beosztások:', i, '/', SUM_GEN)
 
+    print()
     print(SUM_GEN, 'generálásból a legjobbnak vélt beosztás:')
     print()
     niceprint(best_gen_table, DAYS)
     print()
     print('Értékelés:', best_gen_value)
-    print('Generalas:', GEN)
+    print('Generálások száma:', GEN)
 
 main()
