@@ -19,3 +19,11 @@ Szükséges még az első szombat megadása, mert beleszámít az értékelésbe
 Fehér C1 és C2 mezőben csak az ellenőrzést megkönnyítő számadatok vannak, melyek a nappalos ill. éjszakás műszakok összegét tartalmazzák. A program nem veszi őket figyelembe.
 
 A generálás algoritmusa garantálja, hogy mindig egy érvényes beosztást kapjunk a végén, vagyis megfelelő gráfpárosítást. Viszont van egy olyan szabály, hogy 3 egyforma műszak nem követheti egymást, valamint 4 vagy annál több műszak semmilyen kombinációban sem lehet folyamatosan megadva. A program ezeknek a feltételeknek a teljesülését a végzett generálás után vizsgálja csak meg, ami azt eredményezi, hogy addig nem fogadja el a generálást, amíg ezeknek a feltételeknek meg nem felel. Emiatt stochasztikusan következik be sikeres generálás. A program default beállításában 3 érvényes generálás közül válaztja ki a legjobbat a megírt értékelőfüggvénynek megfelelően.
+
+Két megoldás is van:
+1. generalis-admin: gráfpárosítás elvén működik.
+2. generalis-admin-classic: az egyes napokon megy végig és véletlenszerűen osztja ki a műszakokat a megadott feltételeknek megfelelően.
+
+Mindegyik ugyanazzal a függvénnyel értékeli a végeredményt és egy beállított értéknek megfelelő számú generálásból választja ki a legjobbat.
+Gyorsabban ad megoldást a klasszikus program.
+Két 
