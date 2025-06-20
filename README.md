@@ -26,4 +26,3 @@ Két megoldás is van:
 
 Mindegyik ugyanazzal a függvénnyel értékeli a végeredményt és egy beállított értéknek megfelelő számú generálásból választja ki a legjobbat.
 Gyorsabban ad megoldást a klasszikus program.
-Két 
